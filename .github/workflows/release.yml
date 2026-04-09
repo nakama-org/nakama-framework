@@ -2,7 +2,7 @@ name: Auto Release & Publish to PyPI
 
 on:
   push:
-    branches: [main]
+    branches: [master]
 
 permissions:
   contents: write
