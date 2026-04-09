@@ -1,6 +1,6 @@
 [project]
 name = "nakama-framework"
-version = "0.1.0"
+dynamic = ["version"]
 description = "Nakama V3 — Modular chatbot framework for multi-channel messaging"
 requires-python = ">=3.11"
 dependencies = [
@@ -21,8 +21,11 @@ dev = [
 ]
 
 [build-system]
-requires = ["hatchling"]
+requires = ["hatchling", "hatch-vcs"]
 build-backend = "hatchling.build"
+
+[tool.hatch.version]
+source = "vcs"
 
 [tool.hatch.build.targets.wheel]
 packages = ["nakama_framework"]
