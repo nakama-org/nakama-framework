@@ -1,4 +1,4 @@
-name: Auto Release
+name: Auto Release & Publish to PyPI
 
 on:
   push:
@@ -6,6 +6,7 @@ on:
 
 permissions:
   contents: write
+  id-token: write # Required for PyPI trusted publishing
 
 jobs:
   release:
@@ -102,3 +103,27 @@ jobs:
           gh release create "$VERSION" \
             --title "$VERSION" \
             --notes "${{ steps.changelog.outputs.changelog }}"
+
+  publish:
+    needs: release
+    runs-on: ubuntu-latest
+    environment: pypi
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Pull latest tags
+        run: git fetch --tags
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Build package
+        run: |
+          pip install build hatchling hatch-vcs
+          python -m build
+
+      - name: Publish to PyPI
+        uses: pypa/gh-action-pypi-publish@release/v1
