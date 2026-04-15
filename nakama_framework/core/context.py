@@ -32,6 +32,9 @@ class StubSender:
     async def send_text(self, user_id: str, text: str) -> None:
         logger.info("[StubSender] -> %s: %s", user_id, text)
 
+    async def send_image(self, user_id: str, image_url: str) -> None:
+        logger.info("[StubSender] -> %s: image %s", user_id, image_url)
+
     async def send_buttons(
         self, user_id: str, text: str, buttons: list[Button]
     ) -> None:
@@ -189,3 +192,11 @@ class Context:
             buttons: List of quick reply buttons.
         """
         await self.sender.send_quick_replies(self.user.id, text, buttons)
+
+    async def send_image(self, image_url: str) -> None:
+        """Send a standalone image to the user.
+
+        Args:
+            image_url: Public HTTPS URL of the image to send.
+        """
+        await self.sender.send_image(self.user.id, image_url)

@@ -239,6 +239,29 @@ class MessengerClient:
             }
         )
 
+    async def send_image(self, user_id: str, image_url: str) -> None:
+        """Send a standalone image by URL.
+
+        Args:
+            user_id: The recipient's PSID.
+            image_url: Public HTTPS URL of the image.
+        """
+        await self._send_message(
+            {
+                "recipient": {"id": user_id},
+                "messaging_type": "RESPONSE",
+                "message": {
+                    "attachment": {
+                        "type": "image",
+                        "payload": {
+                            "url": image_url,
+                            "is_reusable": True,
+                        },
+                    }
+                },
+            }
+        )
+
     async def send_buttons(
         self, user_id: str, text: str, buttons: list[Button]
     ) -> None:
