@@ -12,6 +12,8 @@ from __future__ import annotations
 
 import asyncio
 import json
+import mimetypes
+from pathlib import Path
 from typing import Any
 
 import httpx
@@ -239,28 +241,68 @@ class MessengerClient:
             }
         )
 
-    async def send_image(self, user_id: str, image_url: str) -> None:
-        """Send a standalone image by URL.
+    async def send_image(self, user_id: str, source: str) -> None:
+        """Send a standalone image, by URL or from a local file path.
 
         Args:
             user_id: The recipient's PSID.
-            image_url: Public HTTPS URL of the image.
+            source: Either an HTTPS URL or a path to a local file.
         """
-        await self._send_message(
-            {
-                "recipient": {"id": user_id},
-                "messaging_type": "RESPONSE",
-                "message": {
-                    "attachment": {
-                        "type": "image",
-                        "payload": {
-                            "url": image_url,
-                            "is_reusable": True,
-                        },
+        if source.startswith(("http://", "https://")):
+            await self._send_message(
+                {
+                    "recipient": {"id": user_id},
+                    "messaging_type": "RESPONSE",
+                    "message": {
+                        "attachment": {
+                            "type": "image",
+                            "payload": {
+                                "url": source,
+                                "is_reusable": True,
+                            },
+                        }
+                    },
+                }
+            )
+            return
+
+        # Local file — upload via multipart/form-data
+        path = Path(source)
+        mime_type = mimetypes.guess_type(path.name)[0] or "application/octet-stream"
+        file_bytes = path.read_bytes()
+
+        await self.send_action(user_id, "mark_seen")
+        await self.send_action(user_id, "typing_on")
+        await asyncio.sleep(self.typing_delay)
+        await self.send_action(user_id, "typing_off")
+
+        client = await self._get_client()
+        response = await client.post(
+            self._api_url,
+            params={"access_token": self.page_access_token},
+            data={
+                "recipient": json.dumps({"id": user_id}),
+                "message": json.dumps(
+                    {
+                        "attachment": {
+                            "type": "image",
+                            "payload": {"is_reusable": True},
+                        }
                     }
-                },
-            }
+                ),
+            },
+            files={"filedata": (path.name, file_bytes, mime_type)},
         )
+
+        if response.status_code != 200:
+            logger.error(
+                "Messenger API error %d on image upload: %s",
+                response.status_code,
+                response.text,
+            )
+            response.raise_for_status()
+
+        logger.debug("Image sent: recipient=%s, file=%s", user_id, path.name)
 
     async def send_buttons(
         self, user_id: str, text: str, buttons: list[Button]

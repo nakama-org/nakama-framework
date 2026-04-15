@@ -29,8 +29,8 @@ class Sender(Protocol):
         """Send a plain text message to a user."""
         ...
 
-    async def send_image(self, user_id: str, image_url: str) -> None:
-        """Send a standalone image to a user."""
+    async def send_image(self, user_id: str, source: str) -> None:
+        """Send a standalone image (URL or local file path)."""
         ...
 
     async def send_buttons(
