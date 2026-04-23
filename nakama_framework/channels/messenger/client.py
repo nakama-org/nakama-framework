@@ -304,6 +304,55 @@ class MessengerClient:
 
         logger.debug("Image sent: recipient=%s, file=%s", user_id, path.name)
 
+    async def send_file(
+        self,
+        user_id: str,
+        data: bytes,
+        filename: str,
+        mime_type: str | None = None,
+    ) -> None:
+        """Send a file attachment from in-memory bytes.
+
+        Uses Messenger's multipart upload with ``attachment.type = "file"``
+        so the recipient sees a native download card in the conversation.
+        """
+        mime = mime_type or (
+            mimetypes.guess_type(filename)[0] or "application/octet-stream"
+        )
+
+        await self.send_action(user_id, "mark_seen")
+        await self.send_action(user_id, "typing_on")
+        await asyncio.sleep(self.typing_delay)
+        await self.send_action(user_id, "typing_off")
+
+        client = await self._get_client()
+        response = await client.post(
+            self._api_url,
+            params={"access_token": self.page_access_token},
+            data={
+                "recipient": json.dumps({"id": user_id}),
+                "message": json.dumps(
+                    {
+                        "attachment": {
+                            "type": "file",
+                            "payload": {"is_reusable": False},
+                        }
+                    }
+                ),
+            },
+            files={"filedata": (filename, data, mime)},
+        )
+
+        if response.status_code != 200:
+            logger.error(
+                "Messenger API error %d on file upload: %s",
+                response.status_code,
+                response.text,
+            )
+            response.raise_for_status()
+
+        logger.debug("File sent: recipient=%s, filename=%s", user_id, filename)
+
     async def send_buttons(
         self, user_id: str, text: str, buttons: list[Button]
     ) -> None:

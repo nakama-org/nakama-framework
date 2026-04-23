@@ -35,6 +35,13 @@ class StubSender:
     async def send_image(self, user_id: str, source: str) -> None:
         logger.info("[StubSender] -> %s: image %s", user_id, source)
 
+    async def send_file(
+        self, user_id: str, data: bytes, filename: str, mime_type: str | None = None
+    ) -> None:
+        logger.info(
+            "[StubSender] -> %s: file %s (%d bytes)", user_id, filename, len(data)
+        )
+
     async def send_buttons(
         self, user_id: str, text: str, buttons: list[Button]
     ) -> None:
@@ -200,3 +207,16 @@ class Context:
             source: Either a public HTTPS URL or a local file path.
         """
         await self.sender.send_image(self.user.id, source)
+
+    async def send_file(
+        self, data: bytes, filename: str, mime_type: str | None = None
+    ) -> None:
+        """Send a file attachment (PDF, docx, etc.) from in-memory bytes.
+
+        Args:
+            data: The file contents.
+            filename: Display name shown to the user (e.g. ``rapport.pdf``).
+            mime_type: Optional MIME type override; inferred from the
+                filename extension when omitted.
+        """
+        await self.sender.send_file(self.user.id, data, filename, mime_type)

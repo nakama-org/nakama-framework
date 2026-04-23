@@ -33,6 +33,12 @@ class Sender(Protocol):
         """Send a standalone image (URL or local file path)."""
         ...
 
+    async def send_file(
+        self, user_id: str, data: bytes, filename: str, mime_type: str | None = None
+    ) -> None:
+        """Send a file attachment (PDF, docx, etc.) from in-memory bytes."""
+        ...
+
     async def send_buttons(
         self, user_id: str, text: str, buttons: list[Button]
     ) -> None:
