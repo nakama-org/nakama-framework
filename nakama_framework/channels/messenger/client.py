@@ -49,6 +49,7 @@ class MessengerClient:
         *,
         http_client: httpx.AsyncClient | None = None,
         typing_delay: float = 0.2,
+        typing_indicator: bool = True,
     ) -> None:
         """Initialize the Messenger client.
 
@@ -57,7 +58,13 @@ class MessengerClient:
             api_version: Graph API version (default: v24.0).
             http_client: Optional pre-configured httpx client (for testing).
             typing_delay: Seconds to wait between typing_on and the
-                actual message (default: 0.2).
+                actual message (default: 0.2). Ignored when
+                ``typing_indicator`` is False.
+            typing_indicator: Whether to show the ``…typing`` bubble and
+                ``mark_seen`` actions before media/carousel/file replies
+                (default: True). Set to False to remove the perceived
+                latency for users who already know they are talking to
+                a bot.
         """
         self.page_access_token = page_access_token
         self._api_url = SEND_API_URL
@@ -65,6 +72,19 @@ class MessengerClient:
         self._batch_url = BATCH_API_URL
         self._client = http_client
         self.typing_delay = typing_delay
+        self.typing_indicator = typing_indicator
+
+    async def _show_typing(self, user_id: str) -> None:
+        """Send the seen+typing sender actions, then sleep for typing_delay.
+
+        No-op when ``typing_indicator`` is disabled.
+        """
+        if not self.typing_indicator:
+            return
+        await self.send_action(user_id, "mark_seen")
+        await self.send_action(user_id, "typing_on")
+        await asyncio.sleep(self.typing_delay)
+        await self.send_action(user_id, "typing_off")
 
     async def _get_client(self) -> httpx.AsyncClient:
         """Get or create the HTTP client."""
@@ -153,10 +173,7 @@ class MessengerClient:
         """
         user_id = payload["recipient"]["id"]
 
-        await self.send_action(user_id, "mark_seen")
-        await self.send_action(user_id, "typing_on")
-        await asyncio.sleep(self.typing_delay)
-        await self.send_action(user_id, "typing_off")
+        await self._show_typing(user_id)
         data = await self._send_raw(payload)
 
         return data
@@ -271,10 +288,7 @@ class MessengerClient:
         mime_type = mimetypes.guess_type(path.name)[0] or "application/octet-stream"
         file_bytes = path.read_bytes()
 
-        await self.send_action(user_id, "mark_seen")
-        await self.send_action(user_id, "typing_on")
-        await asyncio.sleep(self.typing_delay)
-        await self.send_action(user_id, "typing_off")
+        await self._show_typing(user_id)
 
         client = await self._get_client()
         response = await client.post(
@@ -320,10 +334,7 @@ class MessengerClient:
             mimetypes.guess_type(filename)[0] or "application/octet-stream"
         )
 
-        await self.send_action(user_id, "mark_seen")
-        await self.send_action(user_id, "typing_on")
-        await asyncio.sleep(self.typing_delay)
-        await self.send_action(user_id, "typing_off")
+        await self._show_typing(user_id)
 
         client = await self._get_client()
         response = await client.post(

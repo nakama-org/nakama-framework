@@ -54,6 +54,7 @@ class MessengerChannel:
         verify_token: str = "",
         app_secret: str | None = None,
         profile: MessengerProfile | None = None,
+        typing_indicator: bool = True,
     ) -> None:
         """Initialize the Messenger channel.
 
@@ -65,8 +66,13 @@ class MessengerChannel:
                 If None, signature check is skipped (dev mode only).
             profile: Optional Messenger profile config (Get Started,
                 persistent menu). Synced on startup if provided.
+            typing_indicator: Whether to show the ``…typing`` bubble and
+                ``mark_seen`` before replies. Set to False to skip the
+                short delay (default: True).
         """
-        self.client = MessengerClient(page_access_token)
+        self.client = MessengerClient(
+            page_access_token, typing_indicator=typing_indicator
+        )
         self.verify_token = verify_token
         self.app_secret = app_secret
         self.profile = profile
