@@ -209,18 +209,16 @@ class Dispatcher:
                 handler = self._state_handlers[state_name]
                 logger.debug("L2 State match: %s", state_name)
 
-                # Since the handler might access ctx.state_data, and ctx.state_data
-                # is a property that reads from session.state.data, we don't
-                # need to manually clear state before calling the handler.
-                # However, if the handler does NOT call ctx.ask() or ctx.set_state()
-                # to set a NEW state, we clear the state AFTER execution to prevent
-                # infinite loops.
+                # Track the pre-handler state identity. If the handler doesn't
+                # touch session.state (no ask/set_state/clear_state), auto-clear
+                # to prevent infinite loops. Identity check — not name check —
+                # so that re-setting the same state name is honoured (e.g. a
+                # retry flow that keeps the same state).
 
+                pre_state = session.state
                 await handler(ctx)
 
-                # If the state hasn't changed (meaning the handler didn't call ctx.ask),
-                # clear the state so we don't get stuck in the same state.
-                if session.state and session.state.name == state_name:
+                if session.state is pre_state:
                     session.state = None
 
                 return DispatchResult(
